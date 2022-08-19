@@ -137,11 +137,12 @@ public class SwaggerDataV2Parser extends AbsSwaggerDataParser {
         if (paths != null) {
             Iterator<Map.Entry<String, Map<String, Object>>> it = paths.entrySet().iterator();
             while (it.hasNext()) {
+                //遍历每一个接口
                 Map.Entry<String, Map<String, Object>> path = it.next();
-
-                Iterator<Map.Entry<String, Object>> it2 = path.getValue().entrySet().iterator();
                 // 1.请求路径
                 String url = path.getKey();
+
+                Iterator<Map.Entry<String, Object>> it2 = path.getValue().entrySet().iterator();
 
                 // 2. 循环解析每个子节点，适应同一个路径几种请求方式的场景
                 while (it2.hasNext()) {
@@ -191,7 +192,9 @@ public class SwaggerDataV2Parser extends AbsSwaggerDataParser {
                     table.setRequestForm(requestForm);
                     table.setResponseForm(responseForm);
                     table.setRequestType(requestType);
+                    //请求参数列表
                     table.setRequestList(processRequestList(parameters, definitinMap));
+                    //返回参数列表
                     table.setResponseList(processResponseCodeList(responses));
 
                     // 取出来状态是200时的返回值
