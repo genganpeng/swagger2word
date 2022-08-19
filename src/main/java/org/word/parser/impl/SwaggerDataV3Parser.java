@@ -411,6 +411,10 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
                 Request request = new Request();
                 request.setName(String.valueOf(param.get("name")));
                 request.setType(param.get("type") == null ? "object" : param.get("type").toString());
+                Map<String, Object> subSchemaMap = (Map<String, Object>) param.get("schema");
+                if (subSchemaMap != null) {
+                    request.setType(subSchemaMap.get("type") == null ? "object" : subSchemaMap.get("type").toString());
+                }
                 if (param.get("format") != null) {
                     request.setType(request.getType() + "(" + param.get("format") + ")");
                 }
