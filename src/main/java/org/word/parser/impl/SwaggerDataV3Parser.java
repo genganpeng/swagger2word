@@ -83,8 +83,6 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
                         requestForm = requestContentMap.entrySet().stream().findFirst().get().getKey();
                         //获取出body中的类
                         Map<String, Object> requestSchemaMap = (Map<String, Object>) ((Map<String, Object>) requestContentMap.entrySet().stream().findFirst().get().getValue()).get("schema");
-                        //请求参数列表
-//                        List<Request> requests = processRequestList(requestSchemaMap, definitinMap);
                         boolean requestBodyRequired = false;
                         if (requestBodyMap.get("required") != null) {
                             requestBodyRequired = (Boolean) requestBodyMap.get("required");
@@ -99,13 +97,6 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
                     Map<String, Object> responseMap = (Map<String, Object>) content.get("responses");
                     //返回参数列表
                     List<Response> responseList = processResponseCodeList(responseMap);
-                    // 取出来状态是200时的返回值
-//                    Map<String, Object> obj = (Map<String, Object>) responseMap.get("200");
-//                    if (obj != null && obj.get("content") != null) {
-//                        //传入的是有schema的那个map
-//                        table.setModelAttr(processResponseModelAttrs(obj, definitinMap));
-//                    }
-
                     //response content
                     Map<String, Object> responseContentMap = (Map<String, Object>) ((Map<String, Object>) (responseMap.entrySet().stream().findFirst().get().getValue())).get("content");
 
@@ -123,7 +114,6 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
                     } else if (((Map<String, Object>) (responseMap.entrySet().stream().findFirst().get().getValue())).get("response") != null) {
 
                     }
-
 
                     table.setTitle(title);
                     table.setUrl(url);
@@ -350,12 +340,6 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
         return modelAttr;
     }
 
-    private List<Response> processResponseCodeListByResponseMap(Map<String, Object> responseMap) {
-        List<Response> responseList = new ArrayList<>();
-        return responseList;
-    }
-
-
     /**
      * 处理返回码列表
      *
@@ -481,7 +465,7 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
             //新像已经处理完成了，直接返回
             return resMap.get(getDefinitionsStr() + modeName);
         } else {
-//            log.error("[getAndPutModelAttr] modeName:{} is null", modeName);
+            log.debug("[getAndPutModelAttr] modeName:{} is null", modeName);
         }
 
         //从原map中获取出属性列表
