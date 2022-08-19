@@ -23,6 +23,8 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
 
     @Override
     public Map<String, Object> parse(List<Table> result) throws IOException {
+        //解析model
+        Map<String, ModelAttr> definitinMap = parseDefinitions(map);
         //解析paths
         Map<String, Map<String, Object>> paths = (Map<String, Map<String, Object>>) map.get("paths");
         if (paths != null) {
@@ -67,11 +69,20 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
                     } else if (content.get("parameters") != null) {
                         List<String> consumes = (List) content.get("parameters");
                     }
+
+                    List<Request> requestParamList = null;
                     if (requestContentMap != null && !requestContentMap.entrySet().isEmpty()) {
                         //application/json
-                        requestForm = StringUtils.join(requestContentMap.entrySet(), ",");
+                        requestForm = requestContentMap.entrySet().stream().findFirst().get().getKey();
                         //获取出body中的类
                         Map<String, Object> requestSchemaMap = (Map<String, Object>) ((Map<String, Object>) requestContentMap.entrySet().stream().findFirst().get().getValue()).get("schema");
+                        //请求参数列表
+//                        List<Request> requests = processRequestList(requestSchemaMap, definitinMap);
+                        boolean requestBodyRequired = false;
+                        if (requestBodyMap.get("required") != null) {
+                            requestBodyRequired = (Boolean) requestBodyMap.get("required");
+                        }
+                        requestParamList = processRequestListFromRequestBody(requestSchemaMap, definitinMap, requestBodyRequired);
                     }
 
 
@@ -83,12 +94,13 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
                     //response content
                     Map<String, Object> responseContentMap = (Map<String, Object>) ((Map<String, Object>) (responseMap.entrySet().stream().findFirst().get().getValue())).get("content");
                     //*/*
-                    responseForm = responseContentMap.entrySet().stream().findFirst().get().getKey();
-                    Map<String, Object> responseSchemaMap = (Map<String, Object>) ((Map<String, Object>) responseContentMap.entrySet().stream().findFirst().get().getValue()).get("schema");
+                    if (responseContentMap != null) {
+                        responseForm = responseContentMap.entrySet().stream().findFirst().get().getKey();
+                        Map<String, Object> responseSchemaMap = (Map<String, Object>) ((Map<String, Object>) responseContentMap.entrySet().stream().findFirst().get().getValue()).get("schema");
+                    } else if (((Map<String, Object>) (responseMap.entrySet().stream().findFirst().get().getValue())).get("response") != null) {
 
+                    }
 
-                    //解析model
-                    Map<String, ModelAttr> definitinMap = parseDefinitions(map);
 
                     //封装Table
                     Table table = new Table();
@@ -101,6 +113,7 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
                     table.setResponseForm(responseForm);
                     table.setRequestType(requestType);
                     //请求体处理
+                    table.setRequestList(requestParamList);
 //                    table.setRequestList(processRequestList(requestSchemaMap, definitinMap));
                     //响应体处理
 //                    table.setResponseList(processResponseCodeList(responseSchemaMap, definitinMap));
@@ -112,6 +125,24 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
         }
 
         return map;
+    }
+
+    private List<Request> processRequestListFromRequestBody(Map<String, Object> requestSchemaMap, Map<String, ModelAttr> definitinMap, boolean requestBodyRequired) {
+        List<Request> requestList = new ArrayList<>();
+        Request request = new Request();
+        Object ref = requestSchemaMap.get("$ref");
+        if (ref != null) {
+            request.setType("object");
+            //参数名称
+            request.setName(request.getType());
+            request.setParamType(request.getType());
+            request.setType(request.getType() + ":" + ref.toString().replaceAll(getDefinitionsStr(), ""));
+            request.setModelAttr(definitinMap.get(ref));
+            // 是否必填
+            request.setRequire(requestBodyRequired);
+        }
+        requestList.add(request);
+        return requestList;
     }
 
     /**
@@ -140,7 +171,7 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
                         request.setType("array");
                     }
                     if (ref != null) {
-                        request.setType(request.getType() + ":" + ref.toString().replaceAll("#/definitions/", ""));
+                        request.setType(request.getType() + ":" + ref.toString().replaceAll(getDefinitionsStr(), ""));
                         request.setModelAttr(definitinMap.get(ref));
                     }
                 }
