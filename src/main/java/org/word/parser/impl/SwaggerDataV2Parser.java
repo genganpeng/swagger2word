@@ -17,6 +17,11 @@ public class SwaggerDataV2Parser extends AbsSwaggerDataParser {
         super(map);
     }
 
+    @Override
+    public String getDefinitionsStr() {
+        return "#/definitions/";
+    }
+
 
     private List<ModelAttr> getModelAttrs(Map<String, Map<String, Object>> swaggerMap, Map<String, ModelAttr> resMap, ModelAttr modeAttr, Map<String, Object> modeProperties) {
         Iterator<Map.Entry<String, Object>> mIt = modeProperties.entrySet().iterator();
@@ -128,7 +133,7 @@ public class SwaggerDataV2Parser extends AbsSwaggerDataParser {
     }
 
     @Override
-    public Map<String, Object> parse(List<Table> result) throws IOException{
+    public Map<String, Object> parse(List<Table> result) throws IOException {
         //解析model
         Map<String, ModelAttr> definitinMap = parseDefinitions(map);
 

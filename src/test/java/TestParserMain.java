@@ -28,5 +28,6 @@ public class TestParserMain {
         List<Table> result = new ArrayList<>();
         SwaggerParserContext swaggerParserContext = new SwaggerParserContext(jsonStr);
         Map<String, Object> map = swaggerParserContext.doParse(result);
+        System.out.println(map.toString());
     }
 }

@@ -17,6 +17,11 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
     }
 
     @Override
+    public String getDefinitionsStr() {
+        return "#/components/schemas/";
+    }
+
+    @Override
     public Map<String, Object> parse(List<Table> result) throws IOException {
         //解析paths
         Map<String, Map<String, Object>> paths = (Map<String, Map<String, Object>>) map.get("paths");
@@ -47,13 +52,28 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
                     String description = String.valueOf(content.get("summary"));
                     // 7.请求参数格式，类似于 multipart/form-data
                     String requestForm = "";
-                    Map<String, Object> requestMap = (Map<String, Object>) content.get("requestBody");
-                    Map<String, Object> requestContentMap = (Map<String, Object>) requestMap.get("content");
+                    Map<String, Object> requestBodyMap = null;
+                    if (content.get("requestBody") != null) {
+                        requestBodyMap = (Map<String, Object>) content.get("requestBody");
+                    } else if (content.get("parameters") != null) {
+                        //TODO 请求参数处理逻辑；请求参数和请求body同时存在的情况下
+                        List<String> consumes = (List) content.get("parameters");
+                        log.error("[todo] process paramters.");
+                    }
+
+                    Map<String, Object> requestContentMap = null;
+                    if (requestBodyMap != null && requestBodyMap.get("content") != null) {
+                        requestContentMap = (Map<String, Object>) requestBodyMap.get("content");
+                    } else if (content.get("parameters") != null) {
+                        List<String> consumes = (List) content.get("parameters");
+                    }
                     if (requestContentMap != null && !requestContentMap.entrySet().isEmpty()) {
                         //application/json
                         requestForm = StringUtils.join(requestContentMap.entrySet(), ",");
+                        //获取出body中的类
+                        Map<String, Object> requestSchemaMap = (Map<String, Object>) ((Map<String, Object>) requestContentMap.entrySet().stream().findFirst().get().getValue()).get("schema");
                     }
-                    Map<String, Object> requestSchemaMap = (Map<String, Object>) ((Map<String, Object>) requestContentMap.entrySet().stream().findFirst().get().getValue()).get("schema");
+
 
                     // 8.返回参数格式，类似于 application/json
                     String responseForm = "";
@@ -84,12 +104,14 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
 //                    table.setRequestList(processRequestList(requestSchemaMap, definitinMap));
                     //响应体处理
 //                    table.setResponseList(processResponseCodeList(responseSchemaMap, definitinMap));
+
+                    result.add(table);
                 }
 
             }
         }
 
-        return null;
+        return map;
     }
 
     /**
@@ -137,7 +159,7 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
 
     private Map<String, ModelAttr> parseDefinitions(Map<String, Object> map) {
         Map<String, Map<String, Object>> definitions = (Map<String, Map<String, Object>>) ((Map<String, Object>) map.get("components")).get("schemas");
-//        Map<String, Map<String, Object>> definitions = (Map<String, Map<String, Object>>) map.get("components");
+        //存放每个类的定义信息，类似与spring中的bean
         Map<String, ModelAttr> definitinMap = new HashMap<>(256);
         if (definitions != null) {
             Iterator<String> modelNameIt = definitions.keySet().iterator();
@@ -152,21 +174,27 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
 
 
     /**
-     * 递归生成ModelAttr
-     * 对$ref类型设置具体属性
+     * 递归生成ModelAttr<br>
+     * 对$ref类型设置具体属性<br><br>
+     * 在2.0的api中,引用变量为：#/definitions/<br>
+     * 在3.0的api中, 引用变量为：#/components/schemas/<br>
+     *
+     * @param resMap 存放定义好的map <br><br><br>
      */
     private ModelAttr getAndPutModelAttr(Map<String, Map<String, Object>> swaggerMap, Map<String, ModelAttr> resMap, String modeName) {
         ModelAttr modeAttr;
-        if ((modeAttr = resMap.get("#/definitions/" + modeName)) == null) {
+        if ((modeAttr = resMap.get(getDefinitionsStr() + modeName)) == null) {
+            //新对象
             modeAttr = new ModelAttr();
-            resMap.put("#/definitions/" + modeName, modeAttr);
+            resMap.put(getDefinitionsStr() + modeName, modeAttr);
         } else if (modeAttr.isCompleted()) {
-            return resMap.get("#/definitions/" + modeName);
+            //新像已经处理完成了，直接返回
+            return resMap.get(getDefinitionsStr() + modeName);
+        } else {
+//            log.error("[getAndPutModelAttr] modeName:{} is null", modeName);
         }
-        if (swaggerMap.get(modeName) == null) {
-            log.error("[getAndPutModelAttr] modeName:{} is null", modeName);
-            return null;
-        }
+
+        //从原map中获取出属性列表
         Map<String, Object> modeProperties = (Map<String, Object>) swaggerMap.get(modeName).get("properties");
         if (modeProperties == null) {
             return null;
@@ -179,8 +207,8 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
                 Map c = (Map) allOf.get(i);
                 if (c.get("$ref") != null) {
                     String refName = c.get("$ref").toString();
-                    //截取 #/definitions/ 后面的
-                    String clsName = refName.substring(14);
+                    //截取 引用串 后面的
+                    String clsName = refName.substring(getDefinitionsStr().length());
                     Map<String, Object> modeProperties1 = (Map<String, Object>) swaggerMap.get(clsName).get("properties");
                     List<ModelAttr> attrList1 = getModelAttrs(swaggerMap, resMap, modeAttr, modeProperties1);
                     if (attrList1 != null && attrList != null) {
@@ -231,8 +259,8 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
             Object items = attrInfoMap.get("items");
             if (ref != null || (items != null && (ref = ((Map) items).get("$ref")) != null)) {
                 String refName = ref.toString();
-                //截取 #/definitions/ 后面的
-                String clsName = refName.substring(14);
+                //截取 引用串 后面的
+                String clsName = refName.substring(getDefinitionsStr().length());
                 modeAttr.setCompleted(true);
                 ModelAttr refModel = getAndPutModelAttr(swaggerMap, resMap, clsName);
                 if (refModel != null) {
