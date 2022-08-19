@@ -1,11 +1,14 @@
 package org.word.parser.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.util.CollectionUtils;
 import org.word.model.ModelAttr;
 import org.word.model.Request;
+import org.word.model.Response;
 import org.word.model.Table;
+import org.word.utils.JsonUtils;
 
 import java.io.IOException;
 import java.util.*;
@@ -39,6 +42,11 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
 
                 // 2. 循环解析每个子节点，适应同一个路径几种请求方式的场景
                 while (it2.hasNext()) {
+                    //封装Table
+                    Table table = new Table();
+                    //请求参数列表
+                    List<Request> requestParamList = new ArrayList<>();
+
                     Map.Entry<String, Object> request = it2.next();
                     // 2. 请求方式，类似为 get,post,delete,put 这样
                     String requestType = request.getKey();
@@ -58,9 +66,8 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
                     if (content.get("requestBody") != null) {
                         requestBodyMap = (Map<String, Object>) content.get("requestBody");
                     } else if (content.get("parameters") != null) {
-                        //TODO 请求参数处理逻辑；请求参数和请求body同时存在的情况下
-                        List<String> consumes = (List) content.get("parameters");
-                        log.error("[todo] process paramters.");
+                        List<LinkedHashMap> consumes = (List) content.get("parameters");
+                        requestParamList = processRequestList(consumes, definitinMap);
                     }
 
                     Map<String, Object> requestContentMap = null;
@@ -70,7 +77,7 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
                         List<String> consumes = (List) content.get("parameters");
                     }
 
-                    List<Request> requestParamList = null;
+
                     if (requestContentMap != null && !requestContentMap.entrySet().isEmpty()) {
                         //application/json
                         requestForm = requestContentMap.entrySet().stream().findFirst().get().getKey();
@@ -82,28 +89,41 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
                         if (requestBodyMap.get("required") != null) {
                             requestBodyRequired = (Boolean) requestBodyMap.get("required");
                         }
-                        requestParamList = processRequestListFromRequestBody(requestSchemaMap, definitinMap, requestBodyRequired);
+                        //请requestBody也添加进行去
+                        requestParamList.addAll(processRequestListFromRequestBody(requestSchemaMap, definitinMap, requestBodyRequired));
                     }
 
 
                     // 8.返回参数格式，类似于 application/json
                     String responseForm = "";
                     Map<String, Object> responseMap = (Map<String, Object>) content.get("responses");
-                    //200
-                    String responseStateCode = responseMap.entrySet().stream().findFirst().get().getKey();
+                    //返回参数列表
+                    List<Response> responseList = processResponseCodeList(responseMap);
+                    // 取出来状态是200时的返回值
+//                    Map<String, Object> obj = (Map<String, Object>) responseMap.get("200");
+//                    if (obj != null && obj.get("content") != null) {
+//                        //传入的是有schema的那个map
+//                        table.setModelAttr(processResponseModelAttrs(obj, definitinMap));
+//                    }
+
                     //response content
                     Map<String, Object> responseContentMap = (Map<String, Object>) ((Map<String, Object>) (responseMap.entrySet().stream().findFirst().get().getValue())).get("content");
+
+                    String responseParam = null;
                     //*/*
                     if (responseContentMap != null) {
+                        //*/*
                         responseForm = responseContentMap.entrySet().stream().findFirst().get().getKey();
-                        Map<String, Object> responseSchemaMap = (Map<String, Object>) ((Map<String, Object>) responseContentMap.entrySet().stream().findFirst().get().getValue()).get("schema");
+                        //
+                        Map<String, Object> responseContentSubMap = (Map<String, Object>) responseContentMap.entrySet().stream().findFirst().get().getValue();
+                        //处理返回参数
+                        table.setModelAttr(processResponseModelAttrs(responseContentSubMap, definitinMap));
+                        //返回示例
+                        responseParam = processResponseParam(responseContentSubMap, definitinMap);
                     } else if (((Map<String, Object>) (responseMap.entrySet().stream().findFirst().get().getValue())).get("response") != null) {
 
                     }
 
-
-                    //封装Table
-                    Table table = new Table();
 
                     table.setTitle(title);
                     table.setUrl(url);
@@ -114,9 +134,12 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
                     table.setRequestType(requestType);
                     //请求体处理
                     table.setRequestList(requestParamList);
-//                    table.setRequestList(processRequestList(requestSchemaMap, definitinMap));
-                    //响应体处理
-//                    table.setResponseList(processResponseCodeList(responseSchemaMap, definitinMap));
+                    //响应码处理
+                    table.setResponseList(responseList);
+
+                    //示例
+                    table.setRequestParam(processRequestParam(table.getRequestList()));
+                    table.setResponseParam(responseParam);
 
                     result.add(table);
                 }
@@ -127,21 +150,253 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
         return map;
     }
 
+
+    /**
+     * 处理返回值
+     */
+    private String processResponseParam(Map<String, Object> responseObj, Map<String, ModelAttr> definitinMap) throws JsonProcessingException {
+        if (responseObj != null && responseObj.get("schema") != null) {
+            Map<String, Object> schema = (Map<String, Object>) responseObj.get("schema");
+            String type = (String) schema.get("type");
+            String ref = null;
+            // 数组
+            if ("array".equals(type)) {
+                Map<String, Object> items = (Map<String, Object>) schema.get("items");
+                if (items != null && items.get("$ref") != null) {
+                    ref = (String) items.get("$ref");
+                }
+            }
+            // 对象
+            if (schema.get("$ref") != null) {
+                ref = (String) schema.get("$ref");
+            }
+            if (StringUtils.isNotEmpty(ref)) {
+                ModelAttr modelAttr = definitinMap.get(ref);
+                if (modelAttr != null && !CollectionUtils.isEmpty(modelAttr.getProperties())) {
+                    Map<String, Object> responseMap = new HashMap<>(8);
+                    for (ModelAttr subModelAttr : modelAttr.getProperties()) {
+                        responseMap.put(subModelAttr.getName(), getValue(subModelAttr.getType(), subModelAttr));
+                    }
+                    return JsonUtils.writeJsonStr(responseMap);
+                }
+            }
+        }
+        return StringUtils.EMPTY;
+    }
+
+    /**
+     * 例子中，字段的默认值
+     *
+     * @param type      类型
+     * @param modelAttr 引用的类型
+     * @return
+     */
+    private Object getValue(String type, ModelAttr modelAttr) {
+        if (type == null) {
+            return null;
+        }
+        int pos;
+        if ((pos = type.indexOf(":")) != -1) {
+            type = type.substring(0, pos);
+        }
+        switch (type) {
+            case "string":
+                return "string";
+            case "string(date-time)":
+                return "2020/01/01 00:00:00";
+            case "integer":
+            case "integer(int64)":
+            case "integer(int32)":
+                return 0;
+            case "number":
+                return 0.0;
+            case "boolean":
+                return true;
+            case "file":
+                return "(binary)";
+            case "array":
+                List list = new ArrayList();
+                Map<String, Object> map = new LinkedHashMap<>();
+                if (modelAttr != null && !CollectionUtils.isEmpty(modelAttr.getProperties())) {
+                    for (ModelAttr subModelAttr : modelAttr.getProperties()) {
+                        map.put(subModelAttr.getName(), getValue(subModelAttr.getType(), subModelAttr));
+                    }
+                }
+                list.add(map);
+                return list;
+            case "object":
+                map = new LinkedHashMap<>();
+                if (modelAttr != null && !CollectionUtils.isEmpty(modelAttr.getProperties())) {
+                    for (ModelAttr subModelAttr : modelAttr.getProperties()) {
+                        map.put(subModelAttr.getName(), getValue(subModelAttr.getType(), subModelAttr));
+                    }
+                }
+                return map;
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * 封装请求体
+     *
+     * @param list
+     * @return
+     */
+    private String processRequestParam(List<Request> list) throws IOException {
+        Map<String, Object> headerMap = new LinkedHashMap<>();
+        Map<String, Object> queryMap = new LinkedHashMap<>();
+        Map<String, Object> jsonMap = new LinkedHashMap<>();
+        if (list != null && list.size() > 0) {
+            for (Request request : list) {
+                String name = request.getName();
+                String paramType = request.getParamType();
+                Object value = getValue(request.getType(), request.getModelAttr());
+                switch (paramType) {
+                    case "header":
+                        headerMap.put(name, value);
+                        break;
+                    case "query":
+                        queryMap.put(name, value);
+                        break;
+                    case "body":
+                        //TODO 根据content-type序列化成不同格式，目前只用了json
+                        jsonMap.put(name, value);
+                        break;
+                    default:
+                        break;
+
+                }
+            }
+        }
+        String res = "";
+        if (!queryMap.isEmpty()) {
+            res += getUrlParamsByMap(queryMap);
+        }
+        if (!headerMap.isEmpty()) {
+            res += " " + getHeaderByMap(headerMap);
+        }
+        if (!jsonMap.isEmpty()) {
+            if (jsonMap.size() == 1) {
+                for (Map.Entry<String, Object> entry : jsonMap.entrySet()) {
+                    res += " -d '" + JsonUtils.writeJsonStr(entry.getValue()) + "'";
+                }
+            } else {
+                res += " -d '" + JsonUtils.writeJsonStr(jsonMap) + "'";
+            }
+        }
+        return res;
+    }
+
+
+    /**
+     * 将map转换成header
+     */
+    public static String getHeaderByMap(Map<String, Object> map) {
+        if (CollectionUtils.isEmpty(map)) {
+            return "";
+        }
+        StringBuilder sBuilder = new StringBuilder();
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            sBuilder.append("--header '");
+            sBuilder.append(entry.getKey() + ":" + entry.getValue());
+            sBuilder.append("'");
+        }
+        return sBuilder.toString();
+    }
+
+    public static String getUrlParamsByMap(Map<String, Object> map) {
+        if (CollectionUtils.isEmpty(map)) {
+            return "";
+        }
+        StringBuilder sBuilder = new StringBuilder();
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            sBuilder.append(entry.getKey() + "=" + entry.getValue());
+            sBuilder.append("&");
+        }
+        String s = sBuilder.toString();
+        if (s.endsWith("&")) {
+            s = StringUtils.substringBeforeLast(s, "&");
+        }
+        return s;
+    }
+
+    /**
+     * 处理返回属性列表
+     */
+    private ModelAttr processResponseModelAttrs(Map<String, Object> responseObj, Map<String, ModelAttr> definitinMap) {
+        Map<String, Object> schema = (Map<String, Object>) responseObj.get("schema");
+        String type = (String) schema.get("type");
+        String ref = null;
+        //数组
+        if ("array".equals(type)) {
+            Map<String, Object> items = (Map<String, Object>) schema.get("items");
+            if (items != null && items.get("$ref") != null) {
+                ref = (String) items.get("$ref");
+            }
+        }
+        //对象
+        if (schema.get("$ref") != null) {
+            ref = (String) schema.get("$ref");
+        }
+
+        //其他类型
+        ModelAttr modelAttr = new ModelAttr();
+        modelAttr.setType(StringUtils.defaultIfBlank(type, StringUtils.EMPTY));
+
+        if (StringUtils.isNotBlank(ref) && definitinMap.get(ref) != null) {
+            modelAttr = definitinMap.get(ref);
+        }
+        return modelAttr;
+    }
+
+    private List<Response> processResponseCodeListByResponseMap(Map<String, Object> responseMap) {
+        List<Response> responseList = new ArrayList<>();
+        return responseList;
+    }
+
+
+    /**
+     * 处理返回码列表
+     *
+     * @param responses 全部状态码返回对象
+     */
+    private List<Response> processResponseCodeList(Map<String, Object> responses) {
+        List<Response> responseList = new ArrayList<>();
+        Iterator<Map.Entry<String, Object>> resIt = responses.entrySet().iterator();
+        while (resIt.hasNext()) {
+            Map.Entry<String, Object> entry = resIt.next();
+            Response response = new Response();
+            // 状态码 200 201 401 403 404 这样
+            response.setName(entry.getKey());
+            LinkedHashMap<String, Object> statusCodeInfo = (LinkedHashMap) entry.getValue();
+            response.setDescription(String.valueOf(statusCodeInfo.get("description")));
+            Object schema = statusCodeInfo.get("schema");
+            if (schema != null) {
+                Object originalRef = ((LinkedHashMap) schema).get("originalRef");
+                response.setRemark(originalRef == null ? "" : originalRef.toString());
+            }
+            responseList.add(response);
+        }
+        return responseList;
+    }
+
     private List<Request> processRequestListFromRequestBody(Map<String, Object> requestSchemaMap, Map<String, ModelAttr> definitinMap, boolean requestBodyRequired) {
         List<Request> requestList = new ArrayList<>();
-        Request request = new Request();
         Object ref = requestSchemaMap.get("$ref");
         if (ref != null) {
-            request.setType("object");
+            Request request = new Request();
             //参数名称
-            request.setName(request.getType());
-            request.setParamType(request.getType());
-            request.setType(request.getType() + ":" + ref.toString().replaceAll(getDefinitionsStr(), ""));
+            request.setName("body");
+            //参数类型
+            request.setParamType("body");
+            //数据类型
+            request.setType("object" + ":" + ref.toString().replaceAll(getDefinitionsStr(), ""));
             request.setModelAttr(definitinMap.get(ref));
             // 是否必填
             request.setRequire(requestBodyRequired);
+            requestList.add(request);
         }
-        requestList.add(request);
         return requestList;
     }
 
