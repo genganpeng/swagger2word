@@ -130,8 +130,8 @@
                         <td align="left" th:text="${c.count} + '.' + ${request.name}"></td>
                         <td th:text="${request.type}"></td>
                         <td th:text="${request.paramType}"></td>
-                        <td th:if="${request.require}" th:text="Y"></td>
-                        <td th:if="${!request.require}" th:text="N"></td>
+                        <td th:if="${request.require}" th:text="是"></td>
+                        <td th:if="${!request.require}" th:text="否"></td>
                         <td th:text="${request.remark}"></td>
                         <!--                        <td th:if="${request.modelAttr}" th:text="asdfagadfg"></td>-->
                     </tr>
@@ -187,8 +187,8 @@
                 th:style="|padding-left:${10*lv}px|"></td>
             <td th:text="${p.type}"></td>
             <td></td>
-            <td th:if="${p.require}" th:text="Y"></td>
-            <td th:if="${!p.require}" th:text="N"></td>
+            <td th:if="${p.require}" th:text="是"></td>
+            <td th:if="${!p.require}" th:text="否"></td>
             <td th:text="${p.description}"></td>
         </tr>
         <th:block th:unless="${#lists.isEmpty(p.properties)}"
