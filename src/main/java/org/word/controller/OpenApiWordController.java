@@ -1,10 +1,8 @@
 package org.word.controller;
 
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,6 +16,7 @@ import org.thymeleaf.context.Context;
 import org.thymeleaf.spring5.SpringTemplateEngine;
 import org.word.service.OpenApiWordService;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import java.io.BufferedOutputStream;
@@ -26,7 +25,7 @@ import java.net.URLEncoder;
 import java.util.Map;
 
 @Controller
-@Api(tags = "OpenAPI")
+@Tag(name = "OpenAPI")
 public class OpenApiWordController {
 
     @Value("${swagger.url}")
@@ -34,7 +33,7 @@ public class OpenApiWordController {
 
     @Autowired
     private OpenApiWordService openApiWordService;
-    @Autowired
+    @Resource
     private SpringTemplateEngine springTemplateEngine;
 
     private String fileName;
@@ -48,10 +47,9 @@ public class OpenApiWordController {
      * @return
      * @throws Exception
      */
-    @ApiOperation(value = "将 swagger json文件转换成 word文档并下载", notes = "", tags = {"Word"})
-    @ApiResponses(value = {@ApiResponse(code = 200, message = "请求成功。")})
-    @RequestMapping(value = "/OpenApiFileToWord", method = {RequestMethod.POST})
-    public void getWord(Model model, @ApiParam("swagger json file") @Valid @RequestPart("jsonFile") MultipartFile jsonFile, HttpServletResponse response) throws Exception {
+    @Operation(summary = "将 swagger json文件转换成 word文档并下载", description = "")
+    @RequestMapping(value = "/OpenApiFileToWord", method = {RequestMethod.POST}, consumes = "multipart/form-data")
+    public void getWord(Model model, @Parameter(description = "swagger json file") @Valid @RequestPart("jsonFile") MultipartFile jsonFile, HttpServletResponse response) throws Exception {
         generateModelData(model, jsonFile);
         writeContentToResponse(model, response);
     }
