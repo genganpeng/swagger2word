@@ -13,7 +13,7 @@ env:
 name: Java CI with Maven
 
 on:
-  push:
+  page_build:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
