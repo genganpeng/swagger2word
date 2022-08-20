@@ -28,5 +28,4 @@ public class SwaggerParserContext {
         return swaggerDataParser.parse(result);
     }
 
-
 }

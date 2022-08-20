@@ -41,13 +41,16 @@ public class WordServiceImpl implements WordService {
     @Override
     public Map<String, Object> tableListFromString(String jsonStr) {
         Map<String, Object> resultMap = new HashMap<>();
-        List<Table> result = new ArrayList<>();
         try {
+            //表格列表，用来存放解析结果，填充到表格中
+            List<Table> tableList = new ArrayList<>();
+            //解析策略上下文,用来处理不同版本的解析
             SwaggerParserContext swaggerParserContext = new SwaggerParserContext(jsonStr);
-            Map<String, Object> map = swaggerParserContext.doParse(result);
-            Map<String, List<Table>> tableMap = result.stream().parallel().collect(Collectors.groupingBy(Table::getTitle));
+            //进行解析
+            Map<String, Object> apiMap = swaggerParserContext.doParse(tableList);
+            Map<String, List<Table>> tableMap = tableList.stream().parallel().collect(Collectors.groupingBy(Table::getTitle));
             resultMap.put("tableMap", new TreeMap<>(tableMap));
-            resultMap.put("info", map.get("info"));
+            resultMap.put("info", apiMap.get("info"));
 
             log.debug(JsonUtils.writeJsonStr(resultMap));
         } catch (Exception e) {

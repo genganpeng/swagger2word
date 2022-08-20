@@ -63,7 +63,6 @@ public class SwaggerDataV2Parser extends AbsSwaggerDataParser {
     protected ModelAttr getResponseModelAttrFromPathConent(Map<String, Object> pathContent) {
         // 10.返回体
         Map<String, Object> responses = (LinkedHashMap) pathContent.get("responses");
-
         // 取出来状态是200时的返回值
         Map<String, Object> obj = (Map<String, Object>) responses.get("200");
         if (obj != null && obj.get("schema") != null) {

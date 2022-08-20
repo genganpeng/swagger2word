@@ -9,6 +9,7 @@ import org.word.model.Request;
 import org.word.model.Response;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -52,7 +53,7 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
             //处理返回参数
             return processResponseModelAttrs(responseContentSubMap, definitinMap);
         }
-        return null;
+        return new ModelAttr();
     }
 
 
@@ -84,6 +85,11 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
 
     @Override
     protected List<Request> getRequestParamsFromPathConent(Map<String, Object> pathContent) {
+        List<Request> requests = Lists.newArrayList();
+        if (pathContent.get("parameters") != null) {
+            List<LinkedHashMap> consumes = (List) pathContent.get("parameters");
+            requests.addAll(processRequestList(consumes, getDefinitinMap()));
+        }
         if (pathContent.get("requestBody") != null) {
             Map<String, Object> requestBodyMap = (Map<String, Object>) pathContent.get("requestBody");
             Map<String, Object> requestContentMap = (Map<String, Object>) requestBodyMap.get("content");
@@ -95,10 +101,10 @@ public class SwaggerDataV3Parser extends AbsSwaggerDataParser {
                     requestBodyRequired = (Boolean) requestBodyMap.get("required");
                 }
                 //请requestBody也添加进行去
-                return processRequestListFromRequestBody(requestSchemaMap, definitinMap, requestBodyRequired);
+                requests.addAll(processRequestListFromRequestBody(requestSchemaMap, definitinMap, requestBodyRequired));
             }
         }
-        return Lists.newArrayList();
+        return requests;
     }
 
     @Override

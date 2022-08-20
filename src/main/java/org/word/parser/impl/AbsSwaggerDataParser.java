@@ -22,14 +22,19 @@ import java.util.*;
 @SuppressWarnings({"unchecked", "rawtypes"})
 @Slf4j
 public abstract class AbsSwaggerDataParser implements SwaggerDataParser {
-    protected Map<String, Object> map;
+    /**
+     * api的原始map
+     */
+    protected Map<String, Object> apiMap;
     /**
      * 存放每个类的定义信息，类似与spring中的bean
      */
     protected Map<String, ModelAttr> definitinMap = new HashMap<>(256);
 
-    public AbsSwaggerDataParser(Map<String, Object> map) {
-        this.map = map;
+    public AbsSwaggerDataParser(Map<String, Object> apiMap) {
+        this.apiMap = apiMap;
+        //进行model的解析
+        parseModels(apiMap);
     }
 
     /**
@@ -41,7 +46,7 @@ public abstract class AbsSwaggerDataParser implements SwaggerDataParser {
     /**
      * 解析models
      */
-    public Map<String, ModelAttr> parseModels(Map<String, Object> apiMap) {
+    private void parseModels(Map<String, Object> apiMap) {
         Map<String, Map<String, Object>> definitions = getModelsMap(apiMap);
         if (definitions != null) {
             for (String modelName : definitions.keySet()) {
@@ -49,7 +54,6 @@ public abstract class AbsSwaggerDataParser implements SwaggerDataParser {
                 getAndPutModelAttr(definitions, definitinMap, modelName);
             }
         }
-        return definitinMap;
     }
 
     public Map<String, ModelAttr> getDefinitinMap() {
@@ -174,10 +178,8 @@ public abstract class AbsSwaggerDataParser implements SwaggerDataParser {
     }
 
     public Map<String, Object> parse(List<Table> result) throws IOException {
-        //解析model
-        Map<String, ModelAttr> definitinMap = parseModels(map);
         //解析paths
-        Map<String, Map<String, Object>> paths = (Map<String, Map<String, Object>>) map.get("paths");
+        Map<String, Map<String, Object>> paths = (Map<String, Map<String, Object>>) apiMap.get("paths");
         if (paths != null) {
             for (Map.Entry<String, Map<String, Object>> path : paths.entrySet()) {
                 //遍历每一个接口
@@ -188,8 +190,6 @@ public abstract class AbsSwaggerDataParser implements SwaggerDataParser {
                 for (Map.Entry<String, Object> stringObjectEntry : path.getValue().entrySet()) {
                     //封装Table
                     Table table = new Table();
-
-
                     // 2. 请求方式，类似为 get,post,delete,put 这样
                     String requestType = stringObjectEntry.getKey();
 
@@ -204,71 +204,14 @@ public abstract class AbsSwaggerDataParser implements SwaggerDataParser {
                     String description = String.valueOf(content.get("summary"));
                     // 7.请求参数格式，类似于 multipart/form-data
                     String requestFormType = getRequestFormTypeFromPathContent(content);
-//                    Map<String, Object> requestBodyMap = null;
-//                    Map<String, Object> requestContentMap = null;
-//                    if (content.get("requestBody") != null) {
-//                        requestBodyMap = (Map<String, Object>) content.get("requestBody");
-//                        requestContentMap = (Map<String, Object>) requestBodyMap.get("content");
-//                        if (!CollectionUtils.isEmpty(requestContentMap)) {
-//                            //application/json
-//                            requestForm = requestContentMap.entrySet().stream().findFirst().get().getKey();
-//                            //获取出body中的类
-//                            Map<String, Object> requestSchemaMap = (Map<String, Object>) ((Map<String, Object>) requestContentMap.entrySet().stream().findFirst().get().getValue()).get("schema");
-//                            boolean requestBodyRequired = false;
-//                            if (requestBodyMap.get("required") != null) {
-//                                requestBodyRequired = (Boolean) requestBodyMap.get("required");
-//                            }
-//                            //请requestBody也添加进行去
-//                            requestParamList.addAll(processRequestListFromRequestBody(requestSchemaMap, definitinMap, requestBodyRequired));
-//                        }
-//                    }
 
                     //请求参数列表
                     List<Request> requestParamList = getRequestParamsFromPathConent(content);
-//                    if (content.get("parameters") != null) {
-//                        List<LinkedHashMap> consumes = (List) content.get("parameters");
-//                        requestParamList = processRequestList(consumes, definitinMap);
-//                    }
-
-
-//                    if (requestContentMap != null && !requestContentMap.entrySet().isEmpty()) {
-//                        //application/json
-//                        requestForm = requestContentMap.entrySet().stream().findFirst().get().getKey();
-//                        //获取出body中的类
-//                        Map<String, Object> requestSchemaMap = (Map<String, Object>) ((Map<String, Object>) requestContentMap.entrySet().stream().findFirst().get().getValue()).get("schema");
-//                        boolean requestBodyRequired = false;
-//                        if (requestBodyMap.get("required") != null) {
-//                            requestBodyRequired = (Boolean) requestBodyMap.get("required");
-//                        }
-//                        //请requestBody也添加进行去
-//                        requestParamList.addAll(processRequestListFromRequestBody(requestSchemaMap, definitinMap, requestBodyRequired));
-//                    }
-
 
                     // 8.返回参数格式，类似于 application/json
                     String responseFormType = getResponseFormTypeFromPathContent(content);
-//                    Map<String, Object> responseMap = (Map<String, Object>) content.get("responses");
-//                    //返回参数列表
-//                    List<Response> responseList = processResponseCodeList(responseMap);
+                    //返回参数列表
                     List<Response> responseList = getResponseListFromPathConent(content);
-//                    //response content
-//                    Map<String, Object> responseContentMap = (Map<String, Object>) ((Map<String, Object>) (responseMap.entrySet().stream().findFirst().get().getValue())).get("content");
-//
-//                    String responseParam = null;
-//                    //*/*
-//                    if (responseContentMap != null) {
-//                        //*/*
-//                        responseForm = responseContentMap.entrySet().stream().findFirst().get().getKey();
-//                        //
-//                        Map<String, Object> responseContentSubMap = (Map<String, Object>) responseContentMap.entrySet().stream().findFirst().get().getValue();
-//                        //处理返回参数
-//                        table.setModelAttr(processResponseModelAttrs(responseContentSubMap, definitinMap));
-//                        //返回示例
-//                        responseParam = processResponseParam(responseContentSubMap, definitinMap);
-//                    } else if (((Map<String, Object>) (responseMap.entrySet().stream().findFirst().get().getValue())).get("response") != null) {
-//
-//                    }
-
                     table.setTitle(title);
                     table.setUrl(url);
                     table.setTag(tag);
@@ -288,11 +231,10 @@ public abstract class AbsSwaggerDataParser implements SwaggerDataParser {
 
                     result.add(table);
                 }
-
             }
         }
 
-        return map;
+        return apiMap;
     }
 
 
@@ -355,56 +297,6 @@ public abstract class AbsSwaggerDataParser implements SwaggerDataParser {
     protected abstract ModelAttr getResponseModelAttrFromPathConent(Map<String, Object> pathContent);
 
     /**
-     * 例子中，字段的默认值
-     *
-     * @param type      类型
-     * @param modelAttr 引用的类型
-     * @return
-     */
-    private Object getValue(String type, ModelAttr modelAttr) {
-        int pos;
-        if ((pos = type.indexOf(":")) != -1) {
-            type = type.substring(0, pos);
-        }
-        switch (type) {
-            case "string":
-                return "string";
-            case "string(date-time)":
-                return "2020/01/01 00:00:00";
-            case "integer":
-            case "integer(int64)":
-            case "integer(int32)":
-                return 0;
-            case "number":
-                return 0.0;
-            case "boolean":
-                return true;
-            case "file":
-                return "(binary)";
-            case "array":
-                List list = new ArrayList();
-                Map<String, Object> map = new LinkedHashMap<>();
-                if (modelAttr != null && !CollectionUtils.isEmpty(modelAttr.getProperties())) {
-                    for (ModelAttr subModelAttr : modelAttr.getProperties()) {
-                        map.put(subModelAttr.getName(), getValue(subModelAttr.getType(), subModelAttr));
-                    }
-                }
-                list.add(map);
-                return list;
-            case "object":
-                map = new LinkedHashMap<>();
-                if (modelAttr != null && !CollectionUtils.isEmpty(modelAttr.getProperties())) {
-                    for (ModelAttr subModelAttr : modelAttr.getProperties()) {
-                        map.put(subModelAttr.getName(), getValue(subModelAttr.getType(), subModelAttr));
-                    }
-                }
-                return map;
-            default:
-                return null;
-        }
-    }
-
-    /**
      * 处理返回值
      */
     protected String processResponseParam(Map<String, Object> responseObj, Map<String, ModelAttr> definitinMap) throws JsonProcessingException {
@@ -428,7 +320,7 @@ public abstract class AbsSwaggerDataParser implements SwaggerDataParser {
                 if (modelAttr != null && !CollectionUtils.isEmpty(modelAttr.getProperties())) {
                     Map<String, Object> responseMap = new HashMap<>(8);
                     for (ModelAttr subModelAttr : modelAttr.getProperties()) {
-                        responseMap.put(subModelAttr.getName(), getValue(subModelAttr.getType(), subModelAttr));
+                        responseMap.put(subModelAttr.getName(), getExampleValue(subModelAttr.getType(), subModelAttr));
                     }
                     return JsonUtils.writeJsonStr(responseMap);
                 }
@@ -451,7 +343,7 @@ public abstract class AbsSwaggerDataParser implements SwaggerDataParser {
      * @param pathContent pathContent
      * @return List<Request>
      */
-    protected abstract List<Request> getRequestParamsFromPathConent(Map<String, Object> pathContent);
+    protected  abstract List<Request> getRequestParamsFromPathConent(Map<String, Object> pathContent);
 
     /**
      * 获取出响应form类型
@@ -519,9 +411,6 @@ public abstract class AbsSwaggerDataParser implements SwaggerDataParser {
 
     /**
      * 封装请求体
-     *
-     * @param list
-     * @return
      */
     private String processRequestParam(List<Request> list) throws IOException {
         Map<String, Object> headerMap = new LinkedHashMap<>();
