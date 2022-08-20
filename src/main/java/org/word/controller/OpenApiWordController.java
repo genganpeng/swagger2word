@@ -25,7 +25,7 @@ import java.net.URLEncoder;
 import java.util.Map;
 
 @Controller
-@Tag(name = "OpenAPI")
+@Tag(name = "OpenAPI",description = "此处接口未做3.0适配")
 public class OpenApiWordController {
 
     @Value("${swagger.url}")

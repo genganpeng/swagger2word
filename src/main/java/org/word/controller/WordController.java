@@ -22,6 +22,7 @@ import org.thymeleaf.context.Context;
 import org.thymeleaf.spring5.SpringTemplateEngine;
 import org.word.service.WordService;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import java.io.BufferedOutputStream;
@@ -34,7 +35,7 @@ import java.util.Map;
  * Created by XiuYin.Cui on 2018/1/11.
  */
 @Controller
-@Tag(name = "the toWord API")
+@Tag(name = "the toWord API", description = "支持2.0、3.0接口转word")
 @Slf4j
 public class WordController {
 
@@ -43,7 +44,7 @@ public class WordController {
 
     @Autowired
     private WordService tableService;
-    @Autowired
+    @Resource
     private SpringTemplateEngine springTemplateEngine;
 
     private String fileName = "toWord";
