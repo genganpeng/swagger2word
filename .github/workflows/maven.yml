@@ -3,7 +3,7 @@
 
 env:
   TKE_IMAGE_REGISTRY: http://ccr.ccs.tencentyun.com
-  TKE_IMAGE_URL: http://ccr.ccs.tencentyun.com/haiyang/swagger2word
+  TKE_IMAGE_URL: ccr.ccs.tencentyun.com/haiyang/swagger2word
   TKE_REGION: ap-guangzhou
   TKE_CLUSTER_ID: cls-mywebapp
   DEPLOYMENT_NAME: tke-test
@@ -37,7 +37,7 @@ jobs:
         docker build -t ${TKE_IMAGE_URL}:${GITHUB_SHA} .
     - name: Login TKE Registry
       run: |
-        docker login -u ${TENCENT_CLOUD_ACCOUNT_ID} -p '${TKE_REGISTRY_PASSWORD}' ${TKE_IMAGE_URL}
+        docker login -u ${TENCENT_CLOUD_ACCOUNT_ID} -p '${TKE_REGISTRY_PASSWORD}' ${TKE_IMAGE_REGISTRY}
     # Push the Docker image to TKE Registry
     - name: Publish
       run: |
