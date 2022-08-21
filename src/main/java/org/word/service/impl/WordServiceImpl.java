@@ -71,4 +71,22 @@ public class WordServiceImpl implements WordService {
         }
         return resultMap;
     }
+
+    @Override
+    public List<Table> getTableList(String swaggerUrl) {
+        List<Table> tableList = new ArrayList<>();
+        Map<String, Object> resultMap = new HashMap<>();
+        try {
+            String jsonStr = restTemplate.getForObject(swaggerUrl, String.class);
+            //解析策略上下文,用来处理不同版本的解析
+            SwaggerParserContext swaggerParserContext = new SwaggerParserContext(jsonStr);
+            //进行解析
+            swaggerParserContext.doParse(tableList);
+            log.debug(JsonUtils.writeJsonStr(resultMap));
+            return tableList;
+        } catch (Exception e) {
+            log.error("parse error", e);
+        }
+        return tableList;
+    }
 }
