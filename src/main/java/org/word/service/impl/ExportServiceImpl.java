@@ -1,6 +1,7 @@
 package org.word.service.impl;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -41,24 +42,26 @@ public class ExportServiceImpl implements ExportService {
 
             apiDataList.stream().parallel().forEach(apiDataItem -> {
                 List<Table> subTables = urlTableListMap.get(apiDataItem.getApiPathUrl());
-                for (Table subTableItem : subTables) {
-                    if (StringUtils.isNotBlank(apiDataItem.getTag())) {
-                        subTableItem.setTag(apiDataItem.getTag());
-                    }
-                    if (StringUtils.isNotBlank(apiDataItem.getTitle())) {
-                        subTableItem.setTitle(apiDataItem.getTitle());
-                    }
-                    if (StringUtils.isNotBlank(apiDataItem.getApiMethod())) {
-                        //excel中传了请求method时，判断请求类型是否匹配
-                        if (apiDataItem.getApiMethod().equalsIgnoreCase(subTableItem.getRequestType())) {
-                            //请求类型和url都匹配
-                            tableReusltList.add(subTableItem);
-                        } else {
-                            log.info("[renderTableList] method不匹配.url:{} method1:{} method2:{}", apiDataItem.getApiPathUrl(), apiDataItem.getApiMethod(), subTableItem.getRequestType());
+                if (CollectionUtils.isNotEmpty(subTables)) {
+                    subTables.forEach(subTableItem -> {
+                        if (StringUtils.isNotBlank(apiDataItem.getTag())) {
+                            subTableItem.setTag(apiDataItem.getTag());
                         }
-                    } else {
-                        tableReusltList.add(subTableItem);
-                    }
+                        if (StringUtils.isNotBlank(apiDataItem.getTitle())) {
+                            subTableItem.setTitle(apiDataItem.getTitle());
+                        }
+                        if (StringUtils.isNotBlank(apiDataItem.getApiMethod())) {
+                            //excel中传了请求method时，判断请求类型是否匹配
+                            if (apiDataItem.getApiMethod().equalsIgnoreCase(subTableItem.getRequestType())) {
+                                //请求类型和url都匹配
+                                tableReusltList.add(subTableItem);
+                            } else {
+                                log.info("[renderTableList] method不匹配.url:{} method1:{} method2:{}", apiDataItem.getApiPathUrl(), apiDataItem.getApiMethod(), subTableItem.getRequestType());
+                            }
+                        } else {
+                            tableReusltList.add(subTableItem);
+                        }
+                    });
                 }
             });
         }
