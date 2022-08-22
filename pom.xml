@@ -11,7 +11,7 @@
 
     <groupId>com.word</groupId>
     <artifactId>swagger2word</artifactId>
-    <version>1.5.1-SNAPSHOT</version>
+    <version>1.5.2-SNAPSHOT</version>
     <name>swagger2word</name>
     <description>swagger2word</description>
 
