@@ -24,7 +24,7 @@
 
 导出结果为：
 
-![新版预览](https://github.com/puhaiyang/swagger2word/blob/master/previewimg/exceltpl.png)
+![新版预览](https://github.com/puhaiyang/swagger2word/blob/master/previewimg/preview2.png)
 
 
 #### 原仓库介绍文档
