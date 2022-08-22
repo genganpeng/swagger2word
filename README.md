@@ -1,3 +1,8 @@
+### 特性
+- 支持swagger2.0、3.0的api转word
+- 支持excel模板方式导入方式导出word接口文档，过滤特定url，接口重命名
+- 支持docker/k8s方式运行
+
 ### 使用步骤（Google Chrome）
 #### docker方式
 

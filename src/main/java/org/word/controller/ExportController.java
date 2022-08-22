@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
+import org.thymeleaf.context.Context;
+import org.thymeleaf.spring5.SpringTemplateEngine;
 import org.word.model.ApiTplExcelData;
 import org.word.service.ExportService;
 import org.word.utils.ApiTplExcelDataListener;
@@ -40,10 +42,12 @@ import java.util.Map;
 @Tag(name = "ExportController", description = "支持excel模板方式过滤导出")
 public class ExportController {
     private final ExportService exportService;
+    private final SpringTemplateEngine springTemplateEngine;
 
     @Autowired
-    public ExportController(ExportService exportService) {
+    public ExportController(ExportService exportService, SpringTemplateEngine springTemplateEngine) {
         this.exportService = exportService;
+        this.springTemplateEngine = springTemplateEngine;
     }
 
     @Operation(summary = "下载excel模板", description = "excel模板下载")
@@ -66,17 +70,39 @@ public class ExportController {
         }
     }
 
-    @Operation(summary = "预览", description = "预览")
-    @PostMapping(value = "preview", consumes = "multipart/form-data")
-    public String preView(Model model, @Parameter(description = "excelFile") @Valid @RequestPart("excelFile") MultipartFile excelFile) throws Exception {
+    @Operation(summary = "转word", description = "预览")
+    @PostMapping(value = "toWord", consumes = "multipart/form-data")
+    public void toWord(Model model,
+                       @Parameter(description = "excelFile") @Valid @RequestPart("excelFile") MultipartFile excelFile,
+                       HttpServletResponse response) throws Exception {
         List<ApiTplExcelData> apiTplExcelDataList = new ArrayList<>();
         //读取完毕
         EasyExcel.read(excelFile.getInputStream(), ApiTplExcelData.class, new ApiTplExcelDataListener(apiTplExcelDataList)).sheet().doRead();
         log.info("preView size:{}", apiTplExcelDataList.size());
         if (CollectionUtils.isNotEmpty(apiTplExcelDataList)) {
             Map<String, Object> tableMap = exportService.renderTableList(apiTplExcelDataList);
+            model.addAttribute("url", "http://");
+            model.addAttribute("download", 0);
+            model.addAllAttributes(tableMap);
         }
-        return "";
+        writeContentToResponse(model, response);
     }
 
+
+    private void writeContentToResponse(Model model, HttpServletResponse response) {
+        String fileName = "api文档";
+        Context context = new Context();
+        context.setVariables(model.asMap());
+        String content = springTemplateEngine.process("word", context);
+        response.setContentType("application/octet-stream;charset=utf-8");
+        response.setCharacterEncoding("utf-8");
+        try (BufferedOutputStream bos = new BufferedOutputStream(response.getOutputStream())) {
+            response.setHeader("Content-disposition", "attachment;filename=" + URLEncoder.encode(fileName + ".doc", "utf-8"));
+            byte[] bytes = content.getBytes();
+            bos.write(bytes, 0, bytes.length);
+            bos.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }

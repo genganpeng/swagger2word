@@ -6,13 +6,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.word.model.ApiTplExcelData;
 import org.word.model.Table;
+import org.word.model.TableInfo;
 import org.word.service.ExportService;
 import org.word.service.WordService;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDate;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -43,6 +42,12 @@ public class ExportServiceImpl implements ExportService {
             apiDataList.stream().parallel().forEach(apiDataItem -> {
                 List<Table> subTables = urlTableListMap.get(apiDataItem.getApiPathUrl());
                 for (Table subTableItem : subTables) {
+                    if (StringUtils.isNotBlank(apiDataItem.getTag())) {
+                        subTableItem.setTag(apiDataItem.getTag());
+                    }
+                    if (StringUtils.isNotBlank(apiDataItem.getTitle())) {
+                        subTableItem.setTitle(apiDataItem.getTitle());
+                    }
                     if (StringUtils.isNotBlank(apiDataItem.getApiMethod())) {
                         //excel中传了请求method时，判断请求类型是否匹配
                         if (apiDataItem.getApiMethod().equalsIgnoreCase(subTableItem.getRequestType())) {
@@ -57,7 +62,14 @@ public class ExportServiceImpl implements ExportService {
                 }
             });
         }
-        //TODO 返回数据
-        return null;
+        Map<String, Object> resultMap = new HashMap<>();
+        Map<String, List<Table>> tableMap = tableReusltList.stream().parallel().collect(Collectors.groupingBy(Table::getTitle));
+        resultMap.put("tableMap", new TreeMap<>(tableMap));
+        TableInfo tableInfo = new TableInfo();
+        tableInfo.setTitle("api接口文档");
+        LocalDate now = LocalDate.now();
+        tableInfo.setVersion(now.getYear() + "-" + now.getMonth() + "-" + now.getDayOfMonth());
+        resultMap.put("info", tableInfo);
+        return resultMap;
     }
 }
