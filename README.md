@@ -6,17 +6,28 @@
 ### 使用步骤（Google Chrome）
 #### docker方式
 
-**支持swagger2.0和3.0的api的docker镜像为：haiyanggroup-docker.pkg.coding.net/swagger2word/java/swagger2word:20220820**
+**支持swagger2.0和3.0的api的docker镜像为：haiyanggroup-docker.pkg.coding.net/swagger2word/java/swagger2word:1.5.2**
 
 可通过如下命令直接启动：
 
-> docker run -d haiyanggroup-docker.pkg.coding.net/swagger2word/java/swagger2word:20220820 -p10233:10233
+> docker run -d haiyanggroup-docker.pkg.coding.net/swagger2word/java/swagger2word:1.5.2 -p10233:10233
 
 启动之后访问：http://127.0.0.1:10233/swagger-ui.html
 
-![新版预览](https://github.com/puhaiyang/swagger2word/blob/master/preview1.png)
+![新版预览](https://github.com/puhaiyang/swagger2word/blob/master/previewimg/preview1.png)
 
-#### other
+### excel方式导入导出
+
+下载excel模板：http://localhost:10233/export/excel/template/file/download
+
+![新版预览](https://github.com/puhaiyang/swagger2word/blob/master/previewimg/exceltpl.png)
+
+导出结果为：
+
+![新版预览](https://github.com/puhaiyang/swagger2word/blob/master/previewimg/exceltpl.png)
+
+
+#### 原仓库介绍文档
 1. 启动工程，访问地址： http://127.0.0.1:8080/swagger-ui.html
 2. swagger2Word 提供了多种方式生成 word 文档，可以通过 swagger json 的资源地址，例如：https://petstore.swagger.io/v2/swagger.json ；可以通过上传 json 文件；甚至可以直接输入 json 字符串。  
 ![Image text](https://github.com/JMCuixy/swagger2word/blob/master/swagger2word.jpg)
