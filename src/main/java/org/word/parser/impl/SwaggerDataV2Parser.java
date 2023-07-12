@@ -68,7 +68,7 @@ public class SwaggerDataV2Parser extends AbsSwaggerDataParser {
         if (obj != null && obj.get("schema") != null) {
             return processResponseModelAttrs(obj, definitinMap);
         }
-        return null;
+        return new ModelAttr();
     }
 
 
